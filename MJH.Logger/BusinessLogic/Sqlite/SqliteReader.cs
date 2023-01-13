@@ -23,7 +23,7 @@ namespace MJH.BusinessLogic.Sqlite
         {
             _config = new ConfigurationHandler().Read();
 
-            _dbName = _config.SQLite.ServerInformation.LogFileName;
+            _dbName = _config.SQLite.ServerInformation.LogFileName.Insert(_config.SQLite.ServerInformation.LogFileName.Length - 3, "-" + DateTime.Now.Date.ToString("yyyy-MM-dd")); ;
             _dbLocation = _config.SQLite.ServerInformation.LogFileLocation;
 
             _dbConnection = new SqliteConnection($"Data Source={_dbLocation + "\\" + _dbName};Password={_databasePassword};");

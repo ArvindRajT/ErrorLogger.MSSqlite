@@ -4,6 +4,7 @@ using MJH.Models;
 using System;
 using System.IO;
 using Microsoft.Data.Sqlite;
+using System.IO.Compression;
 
 namespace MJH.BusinessLogic.Sqlite
 {
@@ -17,12 +18,21 @@ namespace MJH.BusinessLogic.Sqlite
 
         private readonly LoggerConfig _config;
 
+        private static readonly string BaseFolder =
+            $"{Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData)}\\Schneider Electric\\SmartAlarm\\Logs";
+        private static readonly string ArchiveBaseFolder =
+            $"{Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData)}\\Schneider Electric\\SmartAlarm\\LogsArchive";
+
+        private readonly int archivalPeriod = -1;
+
         public LoggingSqlite()
         {
             _config = new ConfigurationHandler().Read();
 
-            _dbName = _config.SQLite.ServerInformation.LogFileName;
+            _dbName = _config.SQLite.ServerInformation.LogFileName.Insert(_config.SQLite.ServerInformation.LogFileName.Length - 3, "-" + DateTime.Now.Date.ToString("yyyy-MM-dd")); ;
             _dbLocation = _config.SQLite.ServerInformation.LogFileLocation;
+
+            CompressFile(archivalPeriod,BaseFolder);
         }
 
         public bool Exists()
@@ -107,6 +117,45 @@ namespace MJH.BusinessLogic.Sqlite
             }
 
             ExecuteSqLiteNonQuery($"DELETE FROM Error WHERE DateTimeUTC < GETDATE()-{_config.SQLite.LoggerInformation.HistoryToKeep}");
+        }
+
+        private static void CompressFile(int period, string fileDirectory)
+        {
+            try
+            {
+                string[] files = Directory.GetFiles(fileDirectory);
+                var directoryInfo = new DirectoryInfo(ArchiveBaseFolder);
+
+                if (!directoryInfo.Exists)
+                    directoryInfo.Create();
+
+                foreach (string file in files)
+                {
+                    FileInfo fi = new FileInfo(file);
+                    if ((fi.LastAccessTime < DateTime.Now.AddDays(period) || fi.Name.Equals("Activity.db")) && !File.Exists($"{fi.FullName}.zip"))
+                    {
+                        using (ZipArchive archive = ZipFile.Open(Path.ChangeExtension(fi.FullName, ".zip"),
+                                   ZipArchiveMode.Create))
+                        {
+                            archive.CreateEntryFromFile(fi.FullName, Path.GetFileName(fi.FullName));
+                        }
+                        var archivedFile = Path.ChangeExtension(fi.FullName, ".zip");
+                        fi.Delete();
+
+                        if (!File.Exists($"{ArchiveBaseFolder}\\{fi.Name}.zip"))
+                            File.Move(archivedFile, $"{ArchiveBaseFolder}\\{fi.Name}.zip");
+
+                        if (File.Exists(archivedFile))
+                            File.Delete(archivedFile);
+
+                        Console.WriteLine($"File Archived {archivedFile}");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
         }
     }
 }
