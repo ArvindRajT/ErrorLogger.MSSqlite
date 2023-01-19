@@ -3,15 +3,17 @@ using MJH.Interfaces;
 using MJH.Models;
 using System;
 using System.Collections.Generic;
+using MJH.BusinessLogic.Configuration;
+using System.IO;
 
 namespace MJH
 {
     public static class Logger
     {
-        private static readonly ILogger LoggerInterface;
-        private static readonly ILogReader LogReader;
-        private static readonly ILogReaderV2 LogReaderV2;
-        private static readonly ITransaction TransactionInterface;
+        private static ILogger LoggerInterface;
+        private static ILogReader LogReader;
+        private static ILogReaderV2 LogReaderV2;
+        private static ITransaction TransactionInterface;
 
         static Logger()
         {
@@ -24,6 +26,30 @@ namespace MJH
 
             var transactionFactory = new TransactionFactory();
             TransactionInterface = transactionFactory.GetTransactionRepository();
+        }
+
+        public static void TestLogFile()
+        {
+            LoggerConfig config = new ConfigurationHandler().Read();
+            if (config.LoggerType == LoggingTypeModel.LogOutputType.SQLite)
+            {
+                var dbLocation = config.SQLite.ServerInformation.LogFileLocation;
+                var dbName = config.SQLite.ServerInformation.LogFileName.Insert(config.SQLite.ServerInformation.LogFileName.Length - 3, "-" + DateTime.Now.Date.ToString("yyyy-MM-dd"));
+
+                var dbFile = new FileInfo(dbLocation + "\\" + dbName);
+                if (!dbFile.Exists)
+                {
+                    var loggerFactory = new LoggerFactory();
+                    LoggerInterface = loggerFactory.GetLoggerRepository();
+
+                    var logReaderFactory = new LogReaderFactory();
+                    LogReader = logReaderFactory.GetLogReaderRepository();
+                    LogReaderV2 = logReaderFactory.GetLogReaderV2Repository();
+
+                    var transactionFactory = new TransactionFactory();
+                    TransactionInterface = transactionFactory.GetTransactionRepository();
+                }
+            }
         }
 
         /// <summary>
