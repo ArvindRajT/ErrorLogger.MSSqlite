@@ -29,7 +29,7 @@ namespace MJH.BusinessLogic.Sqlite
         {
             _config = new ConfigurationHandler().Read();
 
-            _dbName = _config.SQLite.ServerInformation.LogFileName.Insert(_config.SQLite.ServerInformation.LogFileName.Length - 3, "-" + DateTime.Now.Date.ToString("yyyy-MM-dd")); ;
+            _dbName = _config.SQLite.ServerInformation.LogFileName.Insert(_config.SQLite.ServerInformation.LogFileName.Length - 3, "-" + DateTime.Now.Date.ToString("yyyy-MM-dd"));
             _dbLocation = _config.SQLite.ServerInformation.LogFileLocation;
 
             CompressFile(archivalPeriod,BaseFolder);
